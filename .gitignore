@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.pyc
+
+# 红线规则配置的临时备份（界面「导入/导出」会产生）
+core/_redlines_backup.json
+
+# 视频生成的中间产物
+video/build/
+
+# 本地虚拟环境
+.venv/
+venv/
+
+# 密钥：永远不要提交
+.streamlit/secrets.toml
+.env
