@@ -21,8 +21,23 @@ _DEFAULT = {
 }
 
 
+def _base_env(name: str) -> str:
+    """底层配置读取：Secrets > 环境变量 > 默认值（不含界面覆盖）。
+
+    仅用于给界面输入框提供初始值。
+    """
+    try:
+        import streamlit as st
+        v = st.secrets.get(name, None)                   # type: ignore[union-attr]
+        if v:
+            return str(v).strip()
+    except Exception:
+        pass
+    return os.environ.get(name, _DEFAULT.get(name, "")).strip()
+
+
 def _env(name: str) -> str:
-    """读取配置项，优先级：界面覆盖 > Secrets > 环境变量 > 默认值。
+    """实际生效的配置：界面覆盖 > Secrets > 环境变量 > 默认值。
 
     注意：Streamlit Cloud 的 Secrets **不会**自动写入 os.environ，
     仅读 os.environ 会导致云端部署时永远处于离线演示模式。
@@ -30,14 +45,13 @@ def _env(name: str) -> str:
     try:
         import streamlit as st
         ov = st.session_state.get("_llm_override", {})   # 界面临时覆盖，按会话隔离
-        if ov.get(name):
+        # 用 `in` 而非真值判断：用户主动清空输入框应视为「本次会话不使用大模型」，
+        # 而不是回退到 Secrets —— 否则界面上会出现「框是空的但显示在线」的矛盾。
+        if name in ov:
             return str(ov[name]).strip()
-        v = st.secrets.get(name, None)                   # type: ignore[union-attr]
-        if v:
-            return str(v).strip()
     except Exception:
         pass
-    return os.environ.get(name, _DEFAULT.get(name, "")).strip()
+    return _base_env(name)
 
 
 def get_config():

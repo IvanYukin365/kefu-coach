@@ -106,17 +106,23 @@ with st.sidebar:
     st.markdown("---")
     with st.expander("🔌 大模型接入（可选）", expanded=False):
         st.caption("未配置也能完整演示：客户回复走内置脚本，评分走确定性规则引擎。")
-        if llm.online():
-            st.caption(f"已从 Secrets / 环境变量读取：{llm.get_config()['model']}　（下方留空即沿用）")
-        api_key = st.text_input("API Key", type="password",
-                                value=llm._env("LLM_API_KEY"))
-        base_url = st.text_input("Base URL（OpenAI 兼容）",
-                                 value=llm._env("LLM_BASE_URL"))
-        model = st.text_input("模型名", value=llm._env("LLM_MODEL"))
+        # 加 key 的原因：无 key 的 text_input 每次重跑都会被 value 参数重置，
+        # 用户在界面上清空 Key 想回离线模式时会「清不掉」，被 Secrets 的值弹回来。
+        api_key = st.text_input("API Key", type="password", key="cfg_api_key",
+                                value=llm._base_env("LLM_API_KEY"))
+        base_url = st.text_input("Base URL（OpenAI 兼容）", key="cfg_base_url",
+                                 value=llm._base_env("LLM_BASE_URL"))
+        model = st.text_input("模型名", key="cfg_model",
+                              value=llm._base_env("LLM_MODEL"))
         # 写入会话级覆盖（优先级高于 Secrets），刷新页面后回到 Secrets 配置
         st.session_state["_llm_override"] = {
             "LLM_API_KEY": api_key, "LLM_BASE_URL": base_url, "LLM_MODEL": model,
         }
+        # 状态提示必须放在覆盖写完之后，否则读到的是上一轮的值，会慢一拍
+        if llm.online():
+            st.caption(f"已启用：{llm.get_config()['model']}　（清空 Key 即回到离线演示模式）")
+        else:
+            st.caption("当前为离线演示模式：客户走内置脚本，评分走规则引擎，断网也能跑完。")
 
     st.markdown("---")
     # 注意：这里不能用 key="nav"，否则后续无法用代码切换页面

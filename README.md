@@ -78,12 +78,24 @@ python -m streamlit run app.py
 
 ## 四、部署到 Streamlit Community Cloud
 
-1. 把整个 `kefu-coach` 目录推到 GitHub 仓库（**仓库根目录就是本目录**）
-2. 打开 [share.streamlit.io](https://share.streamlit.io) → New app
-3. Repository 选你的仓库，Branch 选 `main`，**Main file path 填 `app.py`**
-4. 点 Deploy，等 1–2 分钟拿到公网链接 —— 这个链接就是说明书里要填的 **Demo 访问链接**
+**完整步骤见 [`部署指南.md`](部署指南.md)**（含 git 命令、Secrets 配置、
+验收清单、三个真实会踩的坑，以及 Hugging Face / Docker 两个备选方案）。
 
-**想用大模型又不想把 Key 写进代码**：部署后在 App 设置 → Secrets 里填
+最简流程：
+
+1. 本地 git 仓库已初始化并提交好，只需加远端推上去：
+
+   ```powershell
+   git remote add origin https://github.com/<你的用户名>/kefu-coach.git
+   git branch -M main
+   git push -u origin main
+   ```
+
+2. 打开 [share.streamlit.io](https://share.streamlit.io) → New app
+3. **Main file path 填 `app.py`**（不是 `kefu-coach/app.py`），Branch 填 `main`
+4. Deploy，等 1–2 分钟拿到公网链接 —— 这就是说明书里要填的 **Demo 访问链接**
+
+**想用大模型又不想把 Key 写进代码**：App 设置 → Secrets 里填
 
 ```toml
 LLM_API_KEY = "sk-xxxxxx"
@@ -91,7 +103,8 @@ LLM_BASE_URL = "https://api.deepseek.com/v1"
 LLM_MODEL = "deepseek-chat"
 ```
 
-Secrets 不会进代码库，安全。
+Secrets 不进代码库。注意云端容器重启会丢本地改动，**在 ④ 配置页改完红线记得
+「导出 JSON」→ 覆盖 `core/redlines.json` → `git push`**。
 
 ---
 
