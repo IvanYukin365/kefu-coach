@@ -4,14 +4,13 @@
 亚信 1024 黑客松大赛 · 创意赛道 · 赛道A（智能体）
 """
 
-import os
 import re
 import time
 import datetime
 
 import streamlit as st
 
-from core import llm, agents, scoring, rules, rules_config
+from core import llm, agents, scoring, rules, rules_config, auth
 from core.personas import PERSONAS, PERSONA_MAP, POSITIONS
 
 st.set_page_config(
@@ -63,6 +62,14 @@ hr.slim{ border:none; border-top:1px solid var(--line); margin:14px 0; }
 st.markdown(CSS, unsafe_allow_html=True)
 
 
+# ── 访问口令门 ────────────────────────────────────────────────────
+# 公网部署后默认任何人可访问，这里先拦一道。
+# 未配置 APP_PASSWORD 时不启用，本地开发直接放行。
+if not auth.passed():
+    auth.render_gate()
+    st.stop()
+
+
 # ── 会话状态 ──────────────────────────────────────────────────────
 def reset():
     st.session_state.messages = []
@@ -104,27 +111,6 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    with st.expander("🔌 大模型接入（可选）", expanded=False):
-        st.caption("未配置也能完整演示：客户回复走内置脚本，评分走确定性规则引擎。")
-        # 加 key 的原因：无 key 的 text_input 每次重跑都会被 value 参数重置，
-        # 用户在界面上清空 Key 想回离线模式时会「清不掉」，被 Secrets 的值弹回来。
-        api_key = st.text_input("API Key", type="password", key="cfg_api_key",
-                                value=llm._base_env("LLM_API_KEY"))
-        base_url = st.text_input("Base URL（OpenAI 兼容）", key="cfg_base_url",
-                                 value=llm._base_env("LLM_BASE_URL"))
-        model = st.text_input("模型名", key="cfg_model",
-                              value=llm._base_env("LLM_MODEL"))
-        # 写入会话级覆盖（优先级高于 Secrets），刷新页面后回到 Secrets 配置
-        st.session_state["_llm_override"] = {
-            "LLM_API_KEY": api_key, "LLM_BASE_URL": base_url, "LLM_MODEL": model,
-        }
-        # 状态提示必须放在覆盖写完之后，否则读到的是上一轮的值，会慢一拍
-        if llm.online():
-            st.caption(f"已启用：{llm.get_config()['model']}　（清空 Key 即回到离线演示模式）")
-        else:
-            st.caption("当前为离线演示模式：客户走内置脚本，评分走规则引擎，断网也能跑完。")
-
-    st.markdown("---")
     # 注意：这里不能用 key="nav"，否则后续无法用代码切换页面
     # （会触发 StreamlitWidgetAlreadyInstantiatedError）
     _sel = st.radio("导航", PAGES, index=PAGES.index(st.session_state.nav))
@@ -133,10 +119,14 @@ with st.sidebar:
     st.markdown("---")
     if llm.online():
         st.success("在线大模型模式")
-        st.caption(f"模型：{llm.get_config()['model']}")
+        st.caption(f"模型：{llm.get_config()['model']}　（密钥由服务端配置）")
     else:
         st.info("离线演示模式")
         st.caption("无需密钥，100% 可演示")
+
+    if auth.enabled() and st.button("🔒 退出登录", width="stretch"):
+        auth.logout()
+        st.rerun()
 
 st.markdown(
     f"""<div class="hd">

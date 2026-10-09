@@ -2,11 +2,13 @@
 """交互冒烟测试：用 Streamlit AppTest 模拟真实点击流程"""
 import sys
 from streamlit.testing.v1 import AppTest
+from smoke_helper import ensure_login
 
 at = AppTest.from_file("app.py", default_timeout=120)
 at.run()
+ensure_login(at)          # 口令门启用时先登录
 assert not at.exception, f"初始加载异常: {at.exception}"
-print("[1] 初始加载 OK")
+print("[1] 初始加载/登录 OK")
 
 # 选携号转网画像 + 开始对练
 at.selectbox[1].select("portability").run()

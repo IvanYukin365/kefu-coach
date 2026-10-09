@@ -9,6 +9,14 @@
 
 未配置密钥时自动降级为「离线演示模式」——客户回复走内置脚本，
 评分走确定性规则引擎，保证现场演示 100% 可用。
+
+配置方式（**不在界面上填，避免泄露给访客**）：
+  · Streamlit Cloud：App → Settings → Secrets
+  · 本地 / Docker：.streamlit/secrets.toml 或环境变量
+
+    LLM_API_KEY  = "sk-xxxxxxxx"
+    LLM_BASE_URL = "https://api.deepseek.com/v1"   # 可选
+    LLM_MODEL    = "deepseek-chat"                 # 可选
 ====================================================================
 """
 
@@ -21,10 +29,11 @@ _DEFAULT = {
 }
 
 
-def _base_env(name: str) -> str:
-    """底层配置读取：Secrets > 环境变量 > 默认值（不含界面覆盖）。
+def _env(name: str) -> str:
+    """读取配置：Secrets（secrets.toml / 云端面板）> 环境变量 > 默认值。
 
-    仅用于给界面输入框提供初始值。
+    注意：Streamlit Cloud 的 Secrets **不会**自动写入 os.environ，
+    仅读 os.environ 会导致云端部署时永远处于离线演示模式。
     """
     try:
         import streamlit as st
@@ -34,24 +43,6 @@ def _base_env(name: str) -> str:
     except Exception:
         pass
     return os.environ.get(name, _DEFAULT.get(name, "")).strip()
-
-
-def _env(name: str) -> str:
-    """实际生效的配置：界面覆盖 > Secrets > 环境变量 > 默认值。
-
-    注意：Streamlit Cloud 的 Secrets **不会**自动写入 os.environ，
-    仅读 os.environ 会导致云端部署时永远处于离线演示模式。
-    """
-    try:
-        import streamlit as st
-        ov = st.session_state.get("_llm_override", {})   # 界面临时覆盖，按会话隔离
-        # 用 `in` 而非真值判断：用户主动清空输入框应视为「本次会话不使用大模型」，
-        # 而不是回退到 Secrets —— 否则界面上会出现「框是空的但显示在线」的矛盾。
-        if name in ov:
-            return str(ov[name]).strip()
-    except Exception:
-        pass
-    return _base_env(name)
 
 
 def get_config():

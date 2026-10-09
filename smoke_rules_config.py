@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 
 from streamlit.testing.v1 import AppTest
+from smoke_helper import ensure_login
 
 CFG = Path("core/redlines.json")
 BACKUP = Path("core/_redlines_backup.json")
@@ -38,6 +39,7 @@ def main():
     try:
         at = AppTest.from_file("app.py", default_timeout=120)
         at.run()
+        ensure_login(at)          # 口令门启用时先登录
         if at.exception:
             raise AssertionError(f"初始加载异常: {at.exception}")
 
@@ -98,6 +100,7 @@ def main():
         # [7] 恢复默认：配置文件应回到内置默认
         at2 = AppTest.from_file("app.py", default_timeout=120)
         at2.run()
+        ensure_login(at2)         # 新会话，同样要先过口令门
         at2.radio[0].set_value("④ 红线规则配置").run()
         click_btn(at2, "恢复默认")
         data = json.loads(CFG.read_text(encoding="utf-8"))
